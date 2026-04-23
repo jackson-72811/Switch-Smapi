@@ -92,7 +92,9 @@ int hook_make_rx(void* addr, size_t size) {
 }
 
 void hook_flush_icache(void* addr, size_t size) {
-    __builtin___clear_cache((char*)addr, (char*)addr + size);
+    char* start = (char*)addr;
+    char* end   = start + size;
+    __builtin___clear_cache(start, end);
 }
 
 // ─── Write the 16-byte absolute-branch trampoline ────────────────────────────
@@ -122,7 +124,8 @@ int hook_init(void) {
         LOG_W(TAG, "Could not mark pool RWX (0x%08X) — hooks may fault", rc);
     }
 
-    LOG_I(TAG, "Hook system initialised (pool at %p, %u slots)", s_pool, HOOK_MAX_SLOTS);
+    LOG_I(TAG, "Hook system initialised (pool at 0x%016llX, %u slots)",
+          (unsigned long long)(uptr)s_pool, HOOK_MAX_SLOTS);
     return SMAPI_OK;
 }
 
@@ -134,7 +137,7 @@ int hook_install(void* target, void* hook_fn, void** original) {
     // Check for duplicate
     for (u32 i = 0; i < s_slot_count; ++i) {
         if (s_slots[i].active && s_slots[i].target == target) {
-            LOG_W(TAG, "Hook already installed at %p", target);
+            LOG_W(TAG, "Hook already installed at 0x%016llX", (unsigned long long)(uptr)target);
             mutexUnlock(&s_mutex);
             return SMAPI_FAIL;
         }
@@ -186,7 +189,10 @@ int hook_install(void* target, void* hook_fn, void** original) {
 
     if (original) *original = stub;
 
-    LOG_I(TAG, "Installed hook: %p → %p (stub at %p)", target, hook_fn, stub);
+    LOG_I(TAG, "Installed hook: 0x%016llX -> 0x%016llX (stub 0x%016llX)",
+          (unsigned long long)(uptr)target,
+          (unsigned long long)(uptr)hook_fn,
+          (unsigned long long)(uptr)stub);
     mutexUnlock(&s_mutex);
     return SMAPI_OK;
 }
@@ -208,12 +214,12 @@ int hook_remove(void* target) {
         free_stub((u8*)slot->trampoline);
         slot->active = false;
 
-        LOG_I(TAG, "Removed hook at %p", target);
+        LOG_I(TAG, "Removed hook at 0x%016llX", (unsigned long long)(uptr)target);
         mutexUnlock(&s_mutex);
         return SMAPI_OK;
     }
 
-    LOG_W(TAG, "hook_remove: no hook found at %p", target);
+    LOG_W(TAG, "hook_remove: no hook found at 0x%016llX", (unsigned long long)(uptr)target);
     mutexUnlock(&s_mutex);
     return SMAPI_FAIL;
 }

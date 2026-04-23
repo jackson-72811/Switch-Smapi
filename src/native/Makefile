@@ -42,11 +42,15 @@ CPPFILES    := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
 OFILES      := $(CPPFILES:%.cpp=$(BUILD)/%.o) $(CFILES:%.c=$(BUILD)/%.o)
 DEPENDS     := $(OFILES:.o=.d)
 
-INCLUDE     := $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
-               -I$(DEVKITPRO)/libnx/include
+INCLUDE     := $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir))
+
+# Use -isystem for libnx so GCC treats its headers as system headers.
+# This suppresses warnings inside libnx (e.g. -Wmissing-field-initializers
+# in error.h) so our own -Wall -Wextra output stays clean and readable.
+SYSINCLUDE  := -isystem $(DEVKITPRO)/libnx/include
 
 CFLAGS      := -g -Wall -Wextra -O2 -ffunction-sections -fdata-sections \
-               $(ARCH) $(INCLUDE) -D__SWITCH__ -DSMAPI_NATIVE
+               $(ARCH) $(INCLUDE) $(SYSINCLUDE) -D__SWITCH__ -DSMAPI_NATIVE
 
 CXXFLAGS    := $(CFLAGS) -std=c++17 -fno-rtti -fno-exceptions
 

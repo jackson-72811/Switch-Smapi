@@ -4,13 +4,13 @@
 #include <cstdio>
 #include <cstdarg>
 #include <cstring>
-#include <ctime>
+#include <sys/stat.h>   // mkdir()
 
 // ─── Internal state ───────────────────────────────────────────────────────────
 
-static FILE*    s_file      = nullptr;
-static Mutex    s_mutex;
-static bool     s_initialised = false;
+static FILE*  s_file        = nullptr;
+static Mutex  s_mutex;
+static bool   s_initialised = false;
 
 static const char* level_label(LogLevel level) {
     switch (level) {
@@ -29,8 +29,7 @@ static const char* level_label(LogLevel level) {
 int logger_init(const char* log_path) {
     mutexInit(&s_mutex);
 
-    // Ensure the directory exists
-    // Extract directory component and create it
+    // Create parent directories (best-effort, ignore errors)
     char dir[512];
     strncpy(dir, log_path, sizeof(dir) - 1);
     dir[sizeof(dir) - 1] = '\0';
@@ -38,7 +37,6 @@ int logger_init(const char* log_path) {
     char* last_slash = strrchr(dir, '/');
     if (last_slash && last_slash != dir) {
         *last_slash = '\0';
-        // Create directories recursively (best-effort)
         for (char* p = dir + 1; *p; ++p) {
             if (*p == '/') {
                 *p = '\0';
@@ -50,13 +48,10 @@ int logger_init(const char* log_path) {
     }
 
     s_file = fopen(log_path, "w");
-    if (!s_file) {
-        return SMAPI_FAIL;
-    }
+    if (!s_file) return SMAPI_FAIL;
 
     s_initialised = true;
 
-    // Write header
     fprintf(s_file,
         "============================================================\n"
         "  Switch-SMAPI Bootstrap Log\n"
@@ -69,7 +64,6 @@ int logger_init(const char* log_path) {
 void logger_log(LogLevel level, const char* tag, const char* fmt, ...) {
     if (!s_initialised || !s_file) return;
 
-    // Format the message
     char msg[2048];
     va_list args;
     va_start(args, fmt);

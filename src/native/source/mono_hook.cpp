@@ -106,7 +106,7 @@ int mono_hook_resolve(void) {
             uptr addr = elf_get_export(base, k_symbols[i].name);
             if (addr) {
                 *k_symbols[i].target = (void*)addr;
-                LOG_I(TAG, "Resolved %-45s @ 0x%016lX", k_symbols[i].name, addr);
+                LOG_I(TAG, "Resolved %-45s @ 0x%016llX", k_symbols[i].name, (unsigned long long)addr);
                 ++resolved;
             }
         }
@@ -126,7 +126,7 @@ int mono_hook_resolve(void) {
                                          sizeof(k_pat_jit_init_version));
             if (addr) {
                 g_mono.jit_init_version = (fp_mono_jit_init_version)addr;
-                LOG_I(TAG, "Pattern-found mono_jit_init_version @ 0x%016lX", addr);
+                LOG_I(TAG, "Pattern-found mono_jit_init_version @ 0x%016llX", (unsigned long long)addr);
                 ++resolved;
                 break;
             }
@@ -150,7 +150,7 @@ static MonoDomain* hook_mono_jit_init_version(const char* file,
     MonoDomain* domain = s_orig_jit_init_version(file, runtime_version);
 
     if (domain && !s_smapi_loaded) {
-        LOG_I(TAG, "MonoDomain created at %p — loading Switch-SMAPI", domain);
+        LOG_I(TAG, "MonoDomain created at 0x%016llX — loading Switch-SMAPI", (unsigned long long)(uptr)domain);
         s_smapi_loaded = mono_load_smapi(domain);
 
         if (!s_smapi_loaded) {

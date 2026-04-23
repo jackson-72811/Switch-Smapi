@@ -1,42 +1,33 @@
 #pragma once
-#include <stdint.h>
+#include "types.h"   // u8, u16, u32, u64, s32, s64 — already defined by libnx/switch.h
 
-// Minimal ELF64 type and constant definitions.
-//
-// We define these ourselves instead of including <elf.h> because:
-//  - <elf.h> is a Linux system header absent from devkitPro's ARM64 sysroot
-//  - The cross-compiler (aarch64-none-elf-g++) has no host system includes
-//
-// Only the subset used by elf_utils.cpp is defined here.
-
-typedef uint32_t  Elf64_Word;
-typedef uint64_t  Elf64_Xword;
-typedef int64_t   Elf64_Sxword;
-typedef uint64_t  Elf64_Addr;
+// Minimal ELF64 type and constant definitions, defined with SMAPI_ prefix
+// to guarantee zero name conflicts with any system or toolchain <elf.h>.
+// The aarch64-none-elf cross-compiler sysroot may expose its own ELF types;
+// using distinct names avoids every form of redefinition error.
 
 typedef struct {
-    Elf64_Sxword d_tag;
-    union {
-        Elf64_Xword d_val;
-        Elf64_Addr  d_ptr;
-    } d_un;
-} Elf64_Dyn;
+    s64 d_tag;
+    u64 d_ptr;      // Union collapsed — d_val and d_ptr are both u64
+} SmapiDynEntry;
 
 typedef struct {
-    Elf64_Word    st_name;
+    u32           st_name;
     unsigned char st_info;
     unsigned char st_other;
-    uint16_t      st_shndx;
-    Elf64_Addr    st_value;
-    Elf64_Xword   st_size;
-} Elf64_Sym;
+    u16           st_shndx;
+    u64           st_value;
+    u64           st_size;
+} SmapiElfSym;
+
+typedef u32 SmapiElfWord;
 
 // Dynamic section tags
-#define DT_NULL      0
-#define DT_HASH      4
-#define DT_STRTAB    5
-#define DT_SYMTAB    6
-#define DT_GNU_HASH  0x6ffffef5
+#define SMAPI_DT_NULL      0
+#define SMAPI_DT_HASH      4
+#define SMAPI_DT_STRTAB    5
+#define SMAPI_DT_SYMTAB    6
+#define SMAPI_DT_GNU_HASH  0x6ffffef5
 
-// Undefined symbol index
-#define STN_UNDEF    0
+// Undefined symbol table index
+#define SMAPI_STN_UNDEF    0
