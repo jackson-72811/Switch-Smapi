@@ -111,3 +111,10 @@ static void smapi_dtor(void) {
 //     smapi_bootstrap_init();
 //     __real_nninitStartup();
 // }
+
+// ─── Required by libnx crt0 ───────────────────────────────────────────────────
+// This NSO is loaded as a subsdk module — main() is never called, but the
+// linker still requires the symbol because crt0.s references it unconditionally.
+extern "C" int main(int /*argc*/, char* /*argv*/[]) {
+    return 0;
+}

@@ -42,7 +42,7 @@ struct SymbolEntry {
 
 #define SYM(fn_name, field) { fn_name, (void**)&g_mono.field }
 
-static const SymbolEntry k_symbols[] = {
+static SymbolEntry k_symbols[] = {
     SYM("mono_jit_init_version",             jit_init_version),
     SYM("mono_jit_init",                     jit_init),
     SYM("mono_jit_cleanup",                  jit_cleanup),
