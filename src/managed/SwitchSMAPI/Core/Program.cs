@@ -60,6 +60,25 @@ namespace SwitchSMAPI.Core {
                 monitor.Log("Events will not fire.  Mods may not work correctly.", LogLevel.Warn);
             }
 
+            // ── PC-mod compatibility: register assembly resolver before loading ──
+            //
+            // When a PC mod's assembly is loaded, Mono fires AssemblyResolve for
+            // "StardewModdingAPI".  We return our compat shim so the mod's Mod
+            // subclass can be instantiated without recompilation.
+            string compatPath = System.IO.Path.Combine(SMAPI_ROOT, "StardewModdingAPI.dll");
+            ModLoader.RegisterAssemblyResolver(compatPath);
+            monitor.Log($"Compat resolver registered (shim: {compatPath})", LogLevel.Debug);
+
+            // Apply platform emulation patches (Environment, Process, paths)
+            try {
+                var harmony = new HarmonyLib.Harmony("switch.smapi.platform");
+                SwitchSMAPI.PlatformEmulation.EnvironmentEmulator.Apply(harmony);
+                SwitchSMAPI.PlatformEmulation.ProcessEmulator.Apply(harmony);
+                monitor.Log("Platform emulation patches applied", LogLevel.Debug);
+            } catch (Exception ex) {
+                monitor.Log($"Platform emulation patching failed (non-fatal): {ex.Message}", LogLevel.Warn);
+            }
+
             // ── Mod loading ───────────────────────────────────────────────────
             s_registry = new ModRegistry(s_logManager.GetMonitor("Registry"));
 

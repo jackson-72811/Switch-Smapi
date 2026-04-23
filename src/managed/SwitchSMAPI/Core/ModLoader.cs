@@ -36,6 +36,43 @@ namespace SwitchSMAPI.Core {
 
         // ── Public entry point ────────────────────────────────────────────────
 
+        // Path to the compat StardewModdingAPI.dll that lives next to SwitchSMAPI.dll
+        private static string? s_compatAssemblyPath;
+        private static Assembly? s_compatAssembly;
+
+        /// <summary>
+        /// Register the AssemblyResolve hook once so PC mods that reference
+        /// "StardewModdingAPI" receive our compat shim instead of failing to load.
+        /// Call this before <see cref="LoadMods"/>.
+        /// </summary>
+        public static void RegisterAssemblyResolver(string compatAssemblyPath) {
+            s_compatAssemblyPath = compatAssemblyPath;
+            AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
+        }
+
+        private static Assembly? OnAssemblyResolve(object? sender, ResolveEventArgs args) {
+            var name = new AssemblyName(args.Name);
+            if (!string.Equals(name.Name, "StardewModdingAPI", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            if (s_compatAssembly != null) return s_compatAssembly;
+
+            if (s_compatAssemblyPath != null && File.Exists(s_compatAssemblyPath)) {
+                s_compatAssembly = Assembly.LoadFrom(s_compatAssemblyPath);
+                return s_compatAssembly;
+            }
+
+            // Try same directory as SwitchSMAPI.dll
+            string dir      = Path.GetDirectoryName(typeof(ModLoader).Assembly.Location) ?? string.Empty;
+            string fallback = Path.Combine(dir, "StardewModdingAPI.dll");
+            if (File.Exists(fallback)) {
+                s_compatAssembly = Assembly.LoadFrom(fallback);
+                return s_compatAssembly;
+            }
+
+            return null;
+        }
+
         /// <summary>Load all mods from <paramref name="modsRoot"/>.</summary>
         public void LoadMods(string modsRoot) {
             if (!Directory.Exists(modsRoot)) {
@@ -186,7 +223,36 @@ namespace SwitchSMAPI.Core {
                 return;
             }
 
-            // Find the Mod subclass
+            // ── Check for PC mods that subclass StardewModdingAPI.Mod (compat path) ──
+            //
+            // We detect via string comparison on the base-type name so that SwitchSMAPI.dll
+            // does NOT need a compile-time reference to StardewModdingAPI.dll — which would
+            // create a circular dependency.  At runtime the compat assembly is already loaded
+            // by the AssemblyResolve hook before we get here.
+            //
+            bool isSmapiMod = false;
+            Type? smapiModType = null;
+            foreach (Type t in asm.GetExportedTypes()) {
+                if (t.IsAbstract) continue;
+                Type? baseType = t.BaseType;
+                while (baseType != null) {
+                    if (baseType.FullName == "StardewModdingAPI.Mod") {
+                        isSmapiMod  = true;
+                        smapiModType = t;
+                        break;
+                    }
+                    baseType = baseType.BaseType;
+                }
+                if (isSmapiMod) break;
+            }
+
+            if (isSmapiMod && smapiModType != null) {
+                LoadSmapiMod(candidate, smapiModType);
+                return;
+            }
+
+            // ── Native SwitchSMAPI mod path ────────────────────────────────────
+
             Type? modType = null;
             foreach (Type t in asm.GetExportedTypes()) {
                 if (!t.IsAbstract && typeof(Mod).IsAssignableFrom(t)) {
@@ -232,6 +298,108 @@ namespace SwitchSMAPI.Core {
                 _monitor.Log($"  Loaded: {name}", LogLevel.Info);
             } catch (Exception ex) {
                 _monitor.Log($"  Mod '{name}' threw an exception in Entry(): {ex}", LogLevel.Error);
+                entry.HasErrors = true;
+            }
+        }
+
+        // ── PC mod loader (via StardewModdingAPI compat shim) ─────────────────
+        //
+        // The mod subclasses StardewModdingAPI.Mod.  We create a SmapiModHelper
+        // (from the compat assembly) and wire it using the same reflection trick.
+
+        private void LoadSmapiMod(ModCandidate candidate, Type modType) {
+            string name = candidate.Manifest.Name;
+            _monitor.Log($"  Detected as PC mod (StardewModdingAPI.Mod) — using compat shim", LogLevel.Debug);
+
+            // Instantiate the PC mod
+            object modInstance;
+            try {
+                modInstance = Activator.CreateInstance(modType)!;
+            } catch (Exception ex) {
+                _monitor.Log($"  Failed to instantiate {modType.FullName} for '{name}': {ex.Message}", LogLevel.Error);
+                return;
+            }
+
+            // Build the compat IModHelper via StardewModdingAPI.Framework.SmapiModHelper
+            // We do everything via reflection so SwitchSMAPI.dll doesn't reference the compat dll.
+            Assembly? compatAsm = s_compatAssembly;
+            if (compatAsm == null) {
+                _monitor.Log($"  Compat assembly (StardewModdingAPI.dll) not loaded — cannot load PC mod '{name}'", LogLevel.Error);
+                return;
+            }
+
+            Type? helperType = compatAsm.GetType("StardewModdingAPI.Framework.SmapiModHelper");
+            if (helperType == null) {
+                _monitor.Log($"  SmapiModHelper type not found in compat assembly — skipping '{name}'", LogLevel.Error);
+                return;
+            }
+
+            // Build the manifest adapter: SmapiModHelper expects StardewModdingAPI.IManifest.
+            // We pass the same IManifest instance from our internal manifest load;
+            // SmapiModHelper only uses it for Name/UniqueID/Version which are interface-compatible.
+            object? smapiHelper;
+            try {
+                smapiHelper = Activator.CreateInstance(helperType,
+                    candidate.Directory,    // string modDirectory
+                    candidate.Manifest,     // IManifest  (duck-typed — same shape)
+                    _events,               // InternalEventManager
+                    _input,                // InternalInputHelper
+                    _logManager,           // InternalLogManager
+                    _globalDataRoot        // string globalDataRoot
+                );
+            } catch (Exception ex) {
+                _monitor.Log($"  Failed to create SmapiModHelper for '{name}': {ex.Message}", LogLevel.Error);
+                return;
+            }
+
+            // Wire properties on the mod instance using reflection
+            try {
+                // Walk up to find the StardewModdingAPI.Mod base class (where the property setters live)
+                Type? baseType = modType;
+                while (baseType != null && baseType.FullName != "StardewModdingAPI.Mod")
+                    baseType = baseType.BaseType;
+
+                if (baseType == null) {
+                    _monitor.Log($"  Could not find StardewModdingAPI.Mod in hierarchy for '{name}'", LogLevel.Error);
+                    return;
+                }
+
+                // Create a compat-typed manifest adapter so the Mod.ModManifest property gets the right type
+                object? adaptedManifest = candidate.Manifest;
+                Type? manifestAdapterType = compatAsm.GetType("StardewModdingAPI.Framework.SmapiManifestAdapter");
+                if (manifestAdapterType != null)
+                    adaptedManifest = Activator.CreateInstance(manifestAdapterType, candidate.Manifest);
+
+                // Create a compat-typed monitor wrapper
+                object? smapiMonitor = null;
+                Type? monitorType = compatAsm.GetType("StardewModdingAPI.Framework.SmapiMonitor");
+                if (monitorType != null) {
+                    var innerMonitor = _logManager.GetMonitor(name);
+                    smapiMonitor = Activator.CreateInstance(monitorType, innerMonitor);
+                }
+
+                var propFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+                baseType.GetProperty("ModManifest", propFlags)?.SetValue(modInstance, adaptedManifest);
+                if (smapiMonitor != null)
+                    baseType.GetProperty("Monitor", propFlags)?.SetValue(modInstance, smapiMonitor);
+                baseType.GetProperty("Helper", propFlags)?.SetValue(modInstance, smapiHelper);
+
+            } catch (Exception ex) {
+                _monitor.Log($"  Failed to wire mod properties for '{name}': {ex.Message}", LogLevel.Error);
+                return;
+            }
+
+            // Register before calling Entry so mods can look themselves up
+            var entry = new SmapiModEntry(candidate.Manifest, modInstance, name);
+            _registry.RegisterSmapiMod(entry);
+
+            // Call Entry(helper) — mod declares Entry(IModHelper) on the actual type
+            try {
+                var entryMethod = modType.GetMethod("Entry", BindingFlags.Instance | BindingFlags.Public);
+                entryMethod?.Invoke(modInstance, new[] { smapiHelper });
+                _monitor.Log($"  Loaded (PC mod): {name}", LogLevel.Info);
+            } catch (Exception ex) {
+                _monitor.Log($"  PC mod '{name}' threw an exception in Entry(): {ex}", LogLevel.Error);
                 entry.HasErrors = true;
             }
         }

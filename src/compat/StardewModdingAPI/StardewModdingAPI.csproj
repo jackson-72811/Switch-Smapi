@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <!-- MUST match the assembly name desktop SMAPI uses so Mono resolves it. -->
+    <AssemblyName>StardewModdingAPI</AssemblyName>
+    <RootNamespace>StardewModdingAPI</RootNamespace>
+    <AssemblyVersion>4.0.0.0</AssemblyVersion>
+    <FileVersion>4.0.0.0</FileVersion>
+    <Nullable>enable</Nullable>
+    <LangVersion>9.0</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Optimize>true</Optimize>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Description>Switch-SMAPI drop-in compatibility shim for StardewModdingAPI — allows PC mods to run on Nintendo Switch without recompilation.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Our own internal engine. -->
+    <ProjectReference Include="..\..\managed\SwitchSMAPI\SwitchSMAPI.csproj" />
+
+    <!-- Harmony is re-exported so mods that reference it through us work. -->
+    <PackageReference Include="Lib.Harmony"     Version="2.3.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+  </ItemGroup>
+
+  <!-- Game assemblies — users provide these from a legal game dump.
+       Set $(StardewSwitchDump) to the extracted managed-assembly folder. -->
+  <ItemGroup Condition="'$(StardewSwitchDump)' != ''">
+    <Reference Include="Stardew Valley">
+      <HintPath>$(StardewSwitchDump)\Stardew Valley.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="MonoGame.Framework">
+      <HintPath>$(StardewSwitchDump)\MonoGame.Framework.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="xTile">
+      <HintPath>$(StardewSwitchDump)\xTile.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
