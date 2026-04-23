@@ -23,12 +23,13 @@ jobs:
       - name: Install build tools
         run: |
           apt-get update -qq
-          apt-get install -y --no-install-recommends build-essential python3
+          apt-get install -y --no-install-recommends python3
 
       - name: Build native NSO
         working-directory: src/native
+        shell: bash
         run: |
-          source /etc/profile.d/devkit-env.sh
+          . /etc/profile.d/devkit-env.sh
           make -j$(nproc)
 
       - name: Upload NSO
@@ -38,6 +39,13 @@ jobs:
           path: src/native/output/SwitchSMAPI_Bootstrap.nso
 
   # ── Managed C# framework ─────────────────────────────────────────────────────
+  #
+  # The solution contains two projects:
+  #   SwitchSMAPI.csproj         — core engine (no game DLLs needed)
+  #   StardewModdingAPI.csproj   — PC-mod compat shim (requires game DLLs, built by devs)
+  #
+  # CI builds only the core engine.  The compat shim is built locally with
+  # StardewSwitchDump=/path/to/game/managed pointing at a legal game dump.
 
   build-managed:
     name: Managed Framework (C#)
@@ -52,11 +60,11 @@ jobs:
 
       - name: Restore NuGet packages
         working-directory: src/managed
-        run: dotnet restore SwitchSMAPI.sln
+        run: dotnet restore SwitchSMAPI/SwitchSMAPI.csproj
 
       - name: Build (Release)
         working-directory: src/managed
-        run: dotnet build SwitchSMAPI.sln --configuration Release --no-restore
+        run: dotnet build SwitchSMAPI/SwitchSMAPI.csproj --configuration Release --no-restore
 
       - name: Upload managed assemblies
         uses: actions/upload-artifact@v4
