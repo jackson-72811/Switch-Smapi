@@ -67,7 +67,7 @@ int hook_make_rw(void* addr, size_t size) {
 
     Result rc = svcSetMemoryAttribute(
         (void*)page_start, aligned,
-        MemoryAttribute_IsUncached, 0);
+        MemAttr_IsUncached, 0);
 
     if (R_FAILED(rc)) {
         LOG_E(TAG, "svcSetMemoryAttribute RW failed: 0x%08X", rc);
@@ -82,7 +82,7 @@ int hook_make_rx(void* addr, size_t size) {
 
     Result rc = svcSetMemoryAttribute(
         (void*)page_start, aligned,
-        0, MemoryAttribute_IsUncached);
+        0, MemAttr_IsUncached);
 
     if (R_FAILED(rc)) {
         LOG_E(TAG, "svcSetMemoryAttribute RX failed: 0x%08X", rc);
@@ -116,7 +116,7 @@ int hook_init(void) {
     // (s_pool is page-aligned via SMAPI_ALIGNED(PAGE_SIZE))
     Result rc = svcSetMemoryAttribute(
         s_pool, POOL_SIZE,
-        MemoryAttribute_IsUncached, 0);
+        MemAttr_IsUncached, 0);
 
     if (R_FAILED(rc)) {
         LOG_W(TAG, "Could not mark pool RWX (0x%08X) — hooks may fault", rc);

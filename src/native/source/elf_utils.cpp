@@ -2,6 +2,7 @@
 #include "../include/logger.h"
 
 #include <switch.h>
+#include <cstdio>
 #include <cstring>
 #include <cstdlib>
 #include "../include/elf_defs.h"
