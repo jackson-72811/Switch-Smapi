@@ -4,6 +4,7 @@
 #include "../include/logger.h"
 
 #include <switch.h>
+#include <cstdio>
 #include <cstring>
 #include <cstdlib>
 
