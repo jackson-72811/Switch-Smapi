@@ -4,7 +4,7 @@
 #include <switch.h>
 #include <cstring>
 #include <cstdlib>
-#include <elf.h>
+#include "../include/elf_defs.h"
 
 #define TAG "ELF"
 

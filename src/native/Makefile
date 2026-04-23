@@ -8,6 +8,17 @@ ifeq ($(strip $(DEVKITPRO)),)
 $(error "Set DEVKITPRO in your environment. export DEVKITPRO=/opt/devkitpro")
 endif
 
+# ── Windows: use devkitPro's bundled MSYS2 shell ─────────────────────────────
+# devkitPro on Windows ships an MSYS2 environment under $(DEVKITPRO)/msys2.
+# Pointing SHELL at its sh.exe lets all POSIX recipe commands (mkdir -p,
+# rm -rf, etc.) work correctly even when make is invoked from cmd.exe.
+ifeq ($(OS),Windows_NT)
+    _DKP_SH := $(DEVKITPRO)/msys2/usr/bin/sh.exe
+    ifneq ($(wildcard $(_DKP_SH)),)
+        SHELL := $(_DKP_SH)
+    endif
+endif
+
 include $(DEVKITPRO)/libnx/switch_rules
 
 #---------------------------------------------------------------------------------
