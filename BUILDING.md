@@ -64,16 +64,49 @@ src/native/output/
 
 ## Building the managed framework
 
+The solution (`src/managed/SwitchSMAPI.sln`) contains two projects:
+
+| Project | Output DLL | Purpose |
+|---|---|---|
+| `SwitchSMAPI` | `SwitchSMAPI.dll` | Core engine — mod loader, event system, helpers |
+| `StardewModdingAPI` | `StardewModdingAPI.dll` | Binary-compat shim for unmodified PC mods |
+
+### Quick build (engine only, no game DLLs required)
+
 ```bash
 cd src/managed
 dotnet build SwitchSMAPI.sln --configuration Release
 ```
 
-Output assemblies are written to `src/managed/SwitchSMAPI/bin/Release/netstandard2.0/`.
+This builds `SwitchSMAPI.dll` fully. The compat shim builds but **world/player events** that directly reference `StardewValley.GameLocation` and `StardewValley.Farmer` will compile without game-type resolution — they need the game DLLs for a functional build.
+
+### Full build (with game DLLs)
+
+Provide the path to a legal game assembly dump:
+
+```bash
+cd src/managed
+dotnet build SwitchSMAPI.sln --configuration Release \
+    /p:StardewSwitchDump=/path/to/switch-game-dump/managed
+```
+
+`StardewSwitchDump` must point to the folder containing `Stardew Valley.dll`, `MonoGame.Framework.dll`, and `xTile.dll` extracted from a legally-owned Switch cartridge or eShop dump.
+
+### Output assemblies
+
+```
+src/managed/SwitchSMAPI/bin/Release/netstandard2.0/
+├── SwitchSMAPI.dll          Core engine
+
+src/compat/StardewModdingAPI/bin/Release/netstandard2.0/
+└── StardewModdingAPI.dll    PC-mod compat shim
+```
+
+Both DLLs must be deployed to `atmosphere/contents/0100E65002BB8000/romfs/SMAPI/` on the SD card. The packaging script handles this automatically.
 
 ### NuGet dependencies
 
-The project file uses `PackageReference` items. They are restored automatically by `dotnet build`. Required packages:
+Required packages (restored automatically by `dotnet build`):
 
 | Package | Version | Purpose |
 |---|---|---|

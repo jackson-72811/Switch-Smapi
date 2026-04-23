@@ -6,7 +6,7 @@ A complete port of the Stardew Valley Modding API (SMAPI) to Nintendo Switch, di
 
 Switch-SMAPI brings the full SMAPI modding framework to the Nintendo Switch version of Stardew Valley. It works by injecting a native ARM64 bootstrap module alongside the game process at launch. The bootstrap hooks into the Mono JIT runtime before the game code runs, loads the managed SMAPI core assembly, which then scans the SD card for mods and initialises them — all before the first game frame is drawn.
 
-Mods written for Switch-SMAPI use the same API surface as desktop SMAPI, so most PC mods require only a recompile against the Switch-SMAPI SDK targeting `netstandard2.0`.
+Mods written for Switch-SMAPI use the same API surface as desktop SMAPI. PC mods **do not need to be recompiled** — Switch-SMAPI ships a binary-compatible `StardewModdingAPI.dll` shim that Mono resolves instead of the real desktop DLL. Drop any compiled PC mod into `sdmc:/SMAPI/Mods/` and it loads automatically.
 
 ## Requirements
 
@@ -80,18 +80,34 @@ Switch-SMAPI/
 │   ├── native/                      ARM64 C++ bootstrap module
 │   │   ├── include/
 │   │   └── source/
-│   └── managed/                     C# SMAPI framework
-│       └── SwitchSMAPI/
-│           ├── Core/                Mod loader, registry, patcher
-│           └── Framework/           Public API for mod authors
+│   ├── managed/                     C# SMAPI framework (SwitchSMAPI.dll)
+│   │   └── SwitchSMAPI/
+│   │       ├── Core/                Mod loader, registry, patcher
+│   │       ├── Framework/           Public API for native mod authors
+│   │       └── PlatformEmulation/   Harmony patches for Environment/Process/Registry
+│   └── compat/                      PC-mod binary-compat shim (StardewModdingAPI.dll)
+│       └── StardewModdingAPI/
+│           ├── Framework/           Adapters bridging internal ↔ SMAPI 4 types
+│           └── Events/              SMAPI 4 event interfaces and arg types
 ├── mods/
 │   └── SampleMod/                   Reference mod project
 └── tools/                           Build and packaging utilities
 ```
 
+## PC Mod Compatibility
+
+Switch-SMAPI ships a drop-in `StardewModdingAPI.dll` shim (in `src/compat/`) that makes PC mods run without recompilation:
+
+- **Assembly resolver** — The managed engine registers an `AppDomain.AssemblyResolve` hook before loading any mods. When a PC mod's assembly references `StardewModdingAPI`, Mono calls this hook and receives our compat DLL instead of failing.
+- **Full API surface** — The shim implements `IModHelper`, `IMonitor`, all `IModEvents` groups, `IGameContentHelper`, `IModContentHelper`, `IDataHelper`, `IReflectionHelper`, `ITranslationHelper`, `IInputHelper`, `IMultiplayerHelper`, and `ICommandHelper` — the complete SMAPI 4 public API.
+- **Platform emulation** — Harmony patches intercept `Environment.GetFolderPath`, `Process.Start`, and registry reads to return Switch-appropriate values. PC mods that try to read the Steam install path receive `sdmc:/atmosphere/contents/0100E65002BB8000/romfs` instead.
+- **SButton mapping** — Controller and mouse button values are translated between the internal Switch representation and the PC enum values SMAPI mods expect.
+
+Mods that depend on desktop-only platform features (P/Invoke to Win32 DLLs, DirectX-specific APIs) will still fail at runtime, but the vast majority of game-logic mods load and run correctly.
+
 ## Compatibility
 
-Switch-SMAPI targets `netstandard2.0` so it is compatible with the Mono runtime shipped with Stardew Valley on Switch (Mono 6.x). Mods that depend on desktop-only features (Windows registry, P/Invoke to Win32 APIs, XNA sound APIs) will not work and should be ported to the FNA equivalents used by the Switch version.
+Switch-SMAPI targets `netstandard2.0` so it is compatible with the Mono runtime shipped with Stardew Valley on Switch (Mono 6.x).
 
 ## Credits
 

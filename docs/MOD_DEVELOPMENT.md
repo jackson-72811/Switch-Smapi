@@ -343,10 +343,39 @@ Monitor.LogOnce("Only logged once per session", LogLevel.Info);
 
 Log output is written to `sdmc:/SMAPI/logs/SMAPI-latest.log` and rotated to `SMAPI-previous.log`.
 
-## 12. Switch-specific notes
+## 12. Running PC mods without recompilation
+
+Switch-SMAPI ships a binary-compatible `StardewModdingAPI.dll` shim. Most PC mods compiled for desktop SMAPI run without any source changes:
+
+1. Copy the mod folder (including `manifest.json` and the compiled DLL) to `sdmc:/SMAPI/Mods/`.
+2. Ensure `StardewModdingAPI.dll` (the compat shim) is present at `sdmc:/SMAPI/StardewModdingAPI.dll`. The release package includes it.
+3. Boot the Switch — the mod loads automatically. Switch-SMAPI detects that the mod subclasses `StardewModdingAPI.Mod` and routes it through the compat layer.
+
+### What works
+
+- All `IModHelper` methods and properties
+- All `IModEvents` event groups (GameLoop, Display, World, Player, Input, Multiplayer, Specialized)
+- `ReadConfig<T>` / `WriteConfig<T>`
+- `helper.Data` — per-mod and global JSON data
+- `helper.Reflection` — private field/property/method access
+- `helper.Translation` — i18n locale files
+- `helper.Multiplayer` — peer connect/disconnect and mod messages
+- `helper.ConsoleCommands` — console command registration
+- Harmony patching via `HarmonyLib` (same version)
+- `Context.IsWorldReady`, `SDate`, `SemanticVersion`
+
+### What may not work
+
+- Mods that P/Invoke into Windows DLLs (`kernel32.dll`, `user32.dll`, etc.)
+- Mods that read or write the Windows registry directly (not through SMAPI)
+- Mods that spawn child processes (`Process.Start` is patched to no-op)
+- DirectX/XAudio2/WASAPI audio APIs (the Switch uses FNA's audio backend)
+
+## 13. Switch-specific notes
 
 - **No XNA** — The Switch version uses FNA.  Do not import `Microsoft.Xna.Framework` — use `Microsoft.Xna.Framework` from the FNA assemblies in the game dump.
 - **No mouse cursor** — In handheld mode there is no cursor.  Use `SButton` values from the Switch controller (`SButton.ControllerA`, `SButton.ControllerB`, etc.).
 - **Filesystem paths** — Never hardcode Windows-style paths.  Use `helper.DirectoryPath` for your mod folder, or `Path.Combine` with forward slashes.
 - **Performance** — The Switch CPU is significantly weaker than a desktop.  Avoid per-frame allocations and expensive reflection in hot paths.
 - **Mods folder** — Mods live on the SD card at `sdmc:/SMAPI/Mods/`, not in the game's install directory.
+- **PC mods** — Drop compiled PC mod DLLs directly into the Mods folder — no recompile needed. See section 12 above.
