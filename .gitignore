@@ -1,0 +1,53 @@
+# ── Build outputs ─────────────────────────────────────────────────────────────
+src/native/build/
+src/native/output/
+src/managed/**/bin/
+src/managed/**/obj/
+dist/
+*.nso
+*.elf
+*.map
+
+# ── .NET ──────────────────────────────────────────────────────────────────────
+*.user
+*.suo
+.vs/
+packages/
+project.lock.json
+project.fragment.lock.json
+*.nupkg
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+*.egg-info/
+
+# ── Game dumps (must never be committed) ──────────────────────────────────────
+*.nca
+*.xci
+*.nsp
+*.nro
+game_dump/
+stardew_dump/
+keys.prod
+prod.keys
+title.keys
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+!docs/**/*.log   # example log snippets in docs are OK
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor ───────────────────────────────────────────────────────────────────
+.idea/
+*.swp
+*~

@@ -1,0 +1,6 @@
+{
+  "greeting": "Hallo, {{name}}! Willkommen bei Switch-SMAPI.",
+  "item-picked-up": "Du hast {{item}} aufgehoben.",
+  "ticks-played": "Du spielst seit {{ticks}} Ticks.",
+  "level-up": "{{skill}} auf Stufe {{level}} gestiegen!"
+}

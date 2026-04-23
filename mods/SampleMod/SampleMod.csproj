@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>SampleMod</AssemblyName>
+    <RootNamespace>SampleMod</RootNamespace>
+    <Nullable>enable</Nullable>
+    <LangVersion>9.0</LangVersion>
+    <Optimize>true</Optimize>
+    <!-- Build output goes to the mod folder for easy testing -->
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Reference Switch-SMAPI SDK — set SwitchSMAPISDK to the sdk/ folder from the release. -->
+    <Reference Include="SwitchSMAPI">
+      <HintPath>$(SwitchSMAPISDK)\SwitchSMAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <!-- Game assemblies — set StardewSwitchDump to a legal game dump. -->
+    <Reference Include="Stardew Valley" Condition="'$(StardewSwitchDump)' != ''">
+      <HintPath>$(StardewSwitchDump)\Stardew Valley.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="MonoGame.Framework" Condition="'$(StardewSwitchDump)' != ''">
+      <HintPath>$(StardewSwitchDump)\MonoGame.Framework.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Copy manifest.json to the build output -->
+  <ItemGroup>
+    <None Include="manifest.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="i18n\**"       CopyToOutputDirectory="PreserveNewest" Condition="Exists('i18n\')" />
+  </ItemGroup>
+
+</Project>

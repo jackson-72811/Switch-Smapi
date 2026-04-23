@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>SwitchSMAPI</AssemblyName>
+    <RootNamespace>SwitchSMAPI</RootNamespace>
+    <Nullable>enable</Nullable>
+    <LangVersion>9.0</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Optimize>true</Optimize>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\SwitchSMAPI.xml</DocumentationFile>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Description>Stardew Valley Modding API port for Nintendo Switch (Atmosphere CFW)</Description>
+    <Authors>Switch-SMAPI Contributors</Authors>
+    <Copyright>Copyright (c) 2024 Switch-SMAPI Contributors</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Lib.Harmony"       Version="2.3.3" />
+    <PackageReference Include="Newtonsoft.Json"   Version="13.0.3" />
+    <PackageReference Include="Microsoft.CSharp"  Version="4.7.0" />
+  </ItemGroup>
+
+  <!-- These references point at legal game dump assemblies.
+       Set $(StardewSwitchDump) to the folder containing them. -->
+  <ItemGroup Condition="'$(StardewSwitchDump)' != ''">
+    <Reference Include="Stardew Valley">
+      <HintPath>$(StardewSwitchDump)\Stardew Valley.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="MonoGame.Framework">
+      <HintPath>$(StardewSwitchDump)\MonoGame.Framework.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="xTile">
+      <HintPath>$(StardewSwitchDump)\xTile.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

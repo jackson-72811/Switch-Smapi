@@ -1,0 +1,111 @@
+name: Build Switch-SMAPI
+
+on:
+  push:
+    branches: ["**"]
+    tags:     ["v*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+
+  # ── Native ARM64 bootstrap ───────────────────────────────────────────────────
+
+  build-native:
+    name: Native Bootstrap (ARM64)
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends build-essential python3
+
+      - name: Build native NSO
+        working-directory: src/native
+        run: |
+          source /etc/profile.d/devkit-env.sh
+          make -j$(nproc)
+
+      - name: Upload NSO
+        uses: actions/upload-artifact@v4
+        with:
+          name: SwitchSMAPI_Bootstrap
+          path: src/native/output/SwitchSMAPI_Bootstrap.nso
+
+  # ── Managed C# framework ─────────────────────────────────────────────────────
+
+  build-managed:
+    name: Managed Framework (C#)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "6.0.x"
+
+      - name: Restore NuGet packages
+        working-directory: src/managed
+        run: dotnet restore SwitchSMAPI.sln
+
+      - name: Build (Release)
+        working-directory: src/managed
+        run: dotnet build SwitchSMAPI.sln --configuration Release --no-restore
+
+      - name: Upload managed assemblies
+        uses: actions/upload-artifact@v4
+        with:
+          name: SwitchSMAPI_Managed
+          path: src/managed/SwitchSMAPI/bin/Release/netstandard2.0/
+
+  # ── Release package ──────────────────────────────────────────────────────────
+
+  package:
+    name: Package Release
+    runs-on: ubuntu-latest
+    needs: [build-native, build-managed]
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download native NSO
+        uses: actions/download-artifact@v4
+        with:
+          name: SwitchSMAPI_Bootstrap
+          path: src/native/output/
+
+      - name: Download managed assemblies
+        uses: actions/download-artifact@v4
+        with:
+          name: SwitchSMAPI_Managed
+          path: src/managed/SwitchSMAPI/bin/Release/netstandard2.0/
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Build release ZIP
+        run: |
+          python3 tools/package_mod.py --version ${{ steps.version.outputs.VERSION }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/SwitchSMAPI-${{ steps.version.outputs.VERSION }}.zip
+          body: |
+            ## Switch-SMAPI ${{ steps.version.outputs.VERSION }}
+
+            ### Installation
+            1. Download the ZIP and merge the `atmosphere/` folder onto your SD card.
+            2. Place mods in `sdmc:/SMAPI/Mods/`.
+            3. Launch Stardew Valley.
+
+            ### Changelog
+            See [BUILDING.md](BUILDING.md) for build instructions.

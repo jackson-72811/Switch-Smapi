@@ -1,0 +1,10 @@
+{
+  "Name": "Sample Mod",
+  "Author": "YourName",
+  "Version": "1.0.0",
+  "Description": "A minimal example Switch-SMAPI mod that demonstrates event handling, logging, and config reading.",
+  "UniqueID": "YourName.SampleMod",
+  "EntryDll": "SampleMod.dll",
+  "MinimumApiVersion": "1.0.0",
+  "Dependencies": []
+}
