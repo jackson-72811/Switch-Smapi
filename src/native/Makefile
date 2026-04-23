@@ -22,6 +22,18 @@ OUTPUT      := output
 
 ARCH        := -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft
 
+#---------------------------------------------------------------------------------
+# Source collection — must precede INCLUDE/CFLAGS because := evaluates immediately
+#---------------------------------------------------------------------------------
+
+CFILES      := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.c))
+CPPFILES    := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
+OFILES      := $(CPPFILES:%.cpp=$(BUILD)/%.o) $(CFILES:%.c=$(BUILD)/%.o)
+DEPENDS     := $(OFILES:.o=.d)
+
+INCLUDE     := $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
+               -I$(DEVKITPRO)/libnx/include
+
 CFLAGS      := -g -Wall -Wextra -O2 -ffunction-sections -fdata-sections \
                $(ARCH) $(INCLUDE) -D__SWITCH__ -DSMAPI_NATIVE
 
@@ -33,17 +45,7 @@ LDFLAGS     := -specs=$(DEVKITPRO)/libnx/switch.specs \
 
 LIBS        := -lnx
 
-#---------------------------------------------------------------------------------
-# Source collection
-#---------------------------------------------------------------------------------
-
-CFILES      := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.c))
-CPPFILES    := $(foreach dir,$(SOURCES),$(wildcard $(dir)/*.cpp))
-OFILES      := $(CPPFILES:%.cpp=$(BUILD)/%.o) $(CFILES:%.c=$(BUILD)/%.o)
-DEPENDS     := $(OFILES:.o=.d)
-
-INCLUDE     := $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
-               -I$(DEVKITPRO)/libnx/include
+LIBPATHS    := -L$(DEVKITPRO)/libnx/lib
 
 #---------------------------------------------------------------------------------
 # Build rules
